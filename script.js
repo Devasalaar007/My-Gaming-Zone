@@ -538,6 +538,113 @@ function openEventModal(event) {
 function closeEventModal() {
     document.getElementById('eventDetailsModal').style.display = "none";
 }
+// 📅 LEAKDUCK LIVE EVENTS INTEGRATION (DEVA'S GAMING ZONE)
+
+// గేమింగ్ జోన్ సబ్-కేటగిరీ క్లిక్ హ్యాండ్లర్
+function filterGaming(subCategory) {
+    if (subCategory === 'Events') {
+        document.getElementById('gamingZoneArea').style.display = 'none';
+        document.getElementById('pokemonEventsArea').style.display = 'block';
+        document.getElementById('nav-title').innerText = "POKEMON GO EVENTS";
+        
+        // 💥 గిట్‌హబ్ యాక్షన్స్ జనరేట్ చేసిన లైవ్ డేటాను లోడ్ చేయడం
+        loadLiveEvents();
+    } else {
+        alert(subCategory + " ఫీచర్ త్వరలోనే అందుబాటులోకి వస్తుంది!");
+    }
+}
+
+// ఈవెంట్స్ నుండి తిరిగి గేమింగ్ మెనూకి వెళ్ళడానికి
+function backToGamingMenu() {
+    document.getElementById('pokemonEventsArea').style.display = 'none';
+    document.getElementById('gamingZoneArea').style.display = 'block';
+    document.getElementById('nav-title').innerText = "GAMING ZONE";
+}
+
+// మెయిన్ ఫెచ్ లాజిక్ (నీ డౌట్ ని క్లియర్ చేసే అసలైన కోడ్)
+function loadLiveEvents() {
+    const eventsGrid = document.getElementById('eventsGrid');
+    eventsGrid.innerHTML = `<div style="color:white; text-align:center; padding:20px;">🔄 Loading Live Events from LeakDuck...</div>`;
+
+    // 🎯 ఇక్కడ మనం గిట్‌హబ్ యాక్షన్ క్రియేట్ చేసిన JSON ఫైల్ ని రీడ్ చేస్తున్నాం దేవా
+    fetch('./events_deep_data.json')
+        .then(response => {
+            if (!response.ok) throw new Error('Data file not ready yet');
+            return response.json();
+        })
+        .then(eventsData => {
+            eventsGrid.innerHTML = ''; // లోడింగ్ టెక్స్ట్ క్లియర్ చేయడం
+            
+            eventsData.forEach((event, index) => {
+                const card = document.createElement('div');
+                card.style.background = '#141414';
+                card.style.border = `1px solid ${event.borderColor || '#333'}`;
+                card.style.borderRadius = '8px';
+                card.style.overflow = 'hidden';
+                card.style.cursor = 'pointer';
+                card.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4)';
+                card.style.transition = 'transform 0.2s';
+                card.onclick = () => openEventModal(event);
+
+                card.innerHTML = `
+                    <div style="position: relative; width: 100%; height: 130px; background: url('${event.image}') center/cover no-repeat;">
+                        <div style="position: absolute; bottom: 8px; left: 8px; background: rgba(0,0,0,0.85); color: #FFF; padding: 4px 8px; font-size: 10px; font-weight: bold; border-radius: 4px; border-left: 3px solid ${event.borderColor};">
+                            ⏰ ${event.countdownText}
+                        </div>
+                    </div>
+                    <div style="padding: 12px; color: #ffffff;">
+                        <h3 style="margin: 0 0 5px 0; font-size: 14px; font-weight: 800; text-transform: uppercase; color: #ffffff;">${event.name}</h3>
+                        <p style="margin: 0; font-size: 11px; color: #aaaaaa; font-weight: 600;">📅 ${event.dateRange}</p>
+                    </div>
+                `;
+                eventsGrid.appendChild(card);
+            });
+        })
+        .catch(err => {
+            eventsGrid.innerHTML = `
+                <div style="color:#ff3e3e; text-align:center; padding:20px; font-weight:bold; border: 1px dashed #ff3e3e; border-radius:6px; background:rgba(255,0,0,0.05);">
+                    ⚠ Live Events Data is syncing. Please refresh the page in a few moments!
+                </div>`;
+            print(err);
+        });
+}
+
+// మోడల్ ఓపెన్ చేసి 10 రకాల స్పెషాలిటీస్ చూపించే లాజిక్
+function openEventModal(event) {
+    const modal = document.getElementById('eventDetailsModal');
+    const content = document.getElementById('modalEventContent');
+    
+    let bonusesHTML = '';
+    if(event.specialties && event.specialties.length > 0) {
+        event.specialties.forEach(spec => {
+            bonusesHTML += `
+                <div style="background: #191919; border-left: 3px solid #FFCC00; padding: 12px; margin-bottom: 12px; border-radius: 4px;">
+                    <strong style="color: #FFCC00; font-size: 13px; display: block; margin-bottom: 4px; text-transform: uppercase;">🌟 ${spec.title}</strong>
+                    <p style="margin: 0; font-size: 12px; color: #dddddd; line-height: 1.5;">${spec.description}</p>
+                </div>
+            `;
+        });
+    } else {
+        bonusesHTML = `<p style="color:#aaa; font-size:12px;">No active bonuses listed for this event.</p>`;
+    }
+
+    content.innerHTML = `
+        <img src="${event.image}" style="width: 100%; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); margin-bottom: 15px;">
+        <h1 style="margin: 0 0 5px 0; font-size: 20px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px;">${event.name}</h1>
+        <p style="margin: 0 0 20px 0; color: #FF3B30; font-weight: bold; font-size: 12px;">📅 ${event.dateRange}</p>
+        
+        <h3 style="border-bottom: 2px solid #222; padding-bottom: 6px; margin-bottom: 15px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #4CD964;">✨ EVENT SPECIALTIES & BONUSES</h3>
+        <div style="max-height: 400px; overflow-y: auto; padding-right: 5px;">
+            ${bonusesHTML}
+        </div>
+    `;
+    
+    modal.style.display = "block";
+}
+
+function closeEventModal() {
+    document.getElementById('eventDetailsModal').style.display = "none";
+}
 
 window.onload = () => {
     if (!localStorage.getItem('deva_db_v98')) {
