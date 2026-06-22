@@ -1,0 +1,34 @@
+name: LeakDuck Auto Scraper
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # ప్రతిరోజూ ఉదయం 12 గంటలకి ఆటోమేటిక్ గా రన్ అవుతుంది
+  workflow_dispatch: # మనకు కావాలన్నప్పుడు మాన్యువల్ గా కూడా రన్ చేసుకోవచ్చు
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install requests beautifulsoup4
+
+      - name: Run Scraper Script
+        run: python scraper.py
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add events_deep_data.json
+          git commit -m "Auto-updated live events data" || exit 0
+          git push
+          
