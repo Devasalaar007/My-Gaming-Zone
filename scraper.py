@@ -22,69 +22,63 @@ def scrape_leakduck():
     
     try:
         response = requests.get(url, headers=headers)
-        if response.status_center != 200:
+        if response.status_code != 200:
             print(f"Failed to fetch LeakDuck, status: {response.status_code}")
             return
             
         soup = BeautifulSoup(response.text, 'html.parser')
         events = []
         
-        # లీక్‌డక్ లోని అన్ని ఈవెంట్ కార్డ్స్ ఐటమ్స్ లూప్ రన్ అవుతుంది
-        event_cards = soup.select('.event-card-link')
-        print(f"Found {len(event_cards)} events on LeakDuck.")
+        # లీక్‌డక్ లోని మెయిన్ ఈవెంట్ కార్డ్స్ సెలెక్టర్
+        event_cards = soup.select('a.event-card-link')
+        print(f"Found {len(event_cards)} events total.")
 
         for card in event_cards:
             try:
-                # 1. ఈవెంట్ పేరు
-                name_el = card.select_one('.event-title')
-                name = name_el.text.strip() if name_el else "Unknown Event"
+                name_el = card.select_one('.event-title, h1, h2, h3, h2.event-title')
+                name = name_el.text.strip() if name_el else ""
+                if not name:
+                    continue
                 
-                # 2. ఈవెంట్ టైప్/స్పెషలైజేషన్
                 type_el = card.select_one('.event-type')
                 ev_type = type_el.text.strip() if type_el else "Event"
                 
-                # టైప్ బట్టి బ్యాడ్జ్ కలర్ సెట్ చేయడం
                 type_lower = ev_type.lower()
-                color = "#3a3a3c" # default gray
+                color = "#3a3a3c"
                 for key, val in text_colors.items():
                     if key in type_lower:
                         color = val
                         break
                 
-                # 3. ఈవెంట్ ఒరిజినల్ లింక్ (క్లిక్ చేస్తే ఓపెన్ అవ్వడానికి)
-                link = card.get('href', '')
-                if link and not link.startswith('http'):
-                    link = "https://leakduck.com" + link
-                
-                # 4. ఈవెంట్ ఇమేజ్ URL
-                img_el = card.select_one('.event-image img')
-                img_url = ""
+                # ఇమేజ్ దొరకకపోతే పోకేబాల్ ఇమేజ్ వచ్చేలా బ్యాకప్ లింక్
+                img_url = "https://images.gameinfo.io/item/128/pokeball.png"
+                img_el = card.select_one('img')
                 if img_el:
-                    img_url = img_el.get('src') or img_el.get('data-src') or ""
-                if img_url and not img_url.startswith('http'):
+                    possible_src = img_el.get('src') or img_el.get('data-src') or ""
+                    if possible_src and not possible_src.endswith('blank.gif'):
+                        img_url = possible_src
+                
+                if img_url.startswith('/'):
                     img_url = "https://leakduck.com" + img_url
                 
-                # 5. టైమ్ లేబుల్ మరియు సెక్షన్ వివరాలు
-                time_el = card.select_one('.event-countdown')
+                time_el = card.select_one('.event-countdown, .event-time')
                 time_label = time_el.text.strip() if time_el else "Live Now"
                 
-                # సెక్షన్ హెడర్ కనుక్కోవడం (Ends Today, Upcoming, etc.)
+                # కరెక్ట్ సెక్షన్ కనుక్కోవడం
                 parent_section = card.find_parent('div', class_='event-section')
                 section_name = "LIVE EVENTS"
                 if parent_section:
-                    sec_header = parent_section.select_one('.section-title')
+                    sec_header = parent_section.select_one('.section-title, h2')
                     if sec_header:
                         section_name = sec_header.text.strip().upper()
                 
-                # 6. ఆటోమేటిక్ ఎండ్ డేట్ జనరేషన్ (కౌంట్‌డౌన్ రన్ అవ్వడానికి)
-                # లీక్‌డక్ నుండి కరెక్ట్ డేట్స్ రానప్పుడు డీఫాల్ట్ ఎండ్ టైమ్ సెట్ చేయడం
                 now = datetime.utcnow() + timedelta(hours=5, minutes=30) # IST
                 if "today" in section_name.lower():
                     end_time = (now.replace(hour=22, minute=0, second=0)).isoformat()
                 elif "tomorrow" in section_name.lower():
                     end_time = (now + timedelta(days=1)).replace(hour=22, minute=0, second=0).isoformat()
                 else:
-                    end_time = (now + timedelta(days=4)).isoformat() # default 4 days for long week events
+                    end_time = (now + timedelta(days=3)).isoformat()
 
                 events.append({
                     "name": name,
@@ -93,21 +87,22 @@ def scrape_leakduck():
                     "imageUrl": img_url,
                     "endTime": end_time,
                     "timeLabel": time_label,
-                    "section": section_name,
-                    "link": link
+                    "section": section_name
                 })
             except Exception as card_err:
-                print(f"Error parsing card: {card_err}")
                 continue
                 
-        # రూట్ ఫోల్డర్ లోకి JSON డేటాను రాయడం
-        with open('events_deep_data.json', 'w', encoding='utf-8') as f:
-            json.dump(events, f, ensure_ascii=False, indent=4)
-        print("Successfully updated events_deep_data.json with ALL live events!")
+        # ఒకవేళ లిస్ట్ ఖాళీగా ఉంటే పాత డేటా పోకుండా ఉండటానికి చెక్
+        if len(events) > 0:
+            with open('events_deep_data.json', 'w', encoding='utf-8') as f:
+                json.dump(events, f, ensure_ascii=False, indent=4)
+            print(f"Successfully saved {len(events)} events!")
+        else:
+            print("No events scraped. Keeping fallback.")
         
     except Exception as e:
         print(f"Scraper encountered error: {e}")
 
 if __name__ == "__main__":
     scrape_leakduck()
-    
+                
