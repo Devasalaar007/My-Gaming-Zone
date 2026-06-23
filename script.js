@@ -1,3 +1,5 @@
+let globalEventsData = [];
+let timerInterval = null;
 let currentFilter = "Home";
 let activeTaskTab = "daily";
 let selectedTrackId = null;
