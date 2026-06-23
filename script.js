@@ -582,14 +582,137 @@ function loadLiveEventsData() {
         });
 }
 
+
+function backToGamingMenu() {
+    if(document.getElementById('pokemonEventsArea')) {
+        document.getElementById('pokemonEventsArea').style.display = 'none';
+    }
+    const gamingZone = document.getElementById('gamingZoneArea');
+    if(gamingZone) gamingZone.style.display = "block";
+    document.getElementById('nav-title').innerText = "GAMING ZONE";
+}
+
+function closeGamingModal() {
+    if(timerInterval) clearInterval(timerInterval); // మోడల్ మూసేసినప్పుడు బ్యాక్‌గ్రౌండ్ టైమర్ ఆపేస్తాం
+    document.getElementById('gamingZoneModal').style.display = "none";
+}
+// ==========================================
+// POKEMON GO EVENTS SECTION (SAFE PLAN B)
+// ==========================================
+
+// ఈవెంట్ టైప్‌ను బట్టి ఓపెన్-సోర్స్ ఇమేజ్‌ల మ్యాపింగ్
+const fallbackImages = {
+    "max mondays": "https://images.gameinfo.io/item/128/pokeball.png",
+    "raid battles": "https://images.gameinfo.io/item/128/premium-raid-pass.png",
+    "raid days": "https://images.gameinfo.io/item/128/premium-raid-pass.png",
+    "raid hours": "https://images.gameinfo.io/item/128/premium-raid-pass.png",
+    "go battle league": "https://images.gameinfo.io/item/128/go-battle-league-timid-sticker.png",
+    "community day": "https://images.gameinfo.io/item/128/elite-fast-tm.png",
+    "spotlight hour": "https://images.gameinfo.io/item/128/incense.png",
+    "research breakthrough": "https://images.gameinfo.io/item/128/mystery-box.png"
+};
+
+function getEventImage(event) {
+    const typeLower = (event.type || "").toLowerCase();
+    for (const key in fallbackImages) {
+        if (typeLower.includes(key)) {
+            return fallbackImages[key];
+        }
+    }
+    return "https://images.gameinfo.io/item/128/pokeball.png";
+}
+
+function loadLiveEventsData() {
+    const grid = document.getElementById('modalEventsGrid');
+    
+    // బలవంతంగా బ్రౌజర్ కొత్త డేటాను లాగడానికి టైమ్‌స్టాంప్ ట్రిక్ (?t=)
+    fetch(`./events_deep_data.json?t=${Date.now()}`)
+        .then(res => {
+            if (!res.ok) throw new Error('Syncing...');
+            return res.json();
+        })
+        .then(data => {
+            if(!grid) return;
+            grid.innerHTML = '';
+            globalEventsData = data; 
+            
+            let currentSection = "";
+
+            data.forEach((event, index) => {
+                if(event.section && event.section !== currentSection) {
+                    currentSection = event.section;
+                    const secHeader = document.createElement('div');
+                    secHeader.style.cssText = "color: #8E8E93; font-size: 12px; font-weight: 700; margin-top: 20px; border-bottom: 1px solid #222; padding-bottom: 6px; letter-spacing: 0.5px; text-transform: uppercase; width: 100%; grid-column: 1 / -1;";
+                    secHeader.innerText = currentSection;
+                    grid.appendChild(secHeader);
+                }
+
+                const card = document.createElement('div');
+                card.className = "pogo-event-card-wrapper";
+                
+                const displayImg = getEventImage(event);
+                
+                card.innerHTML = `
+                    <div class="pogo-event-card" onclick="openEventDetails(${index})" style="cursor: pointer;">
+                        <div class="pogo-card-body">
+                            <img src="${displayImg}" class="pogo-card-img" style="background: #1c1c1e; padding: 5px; object-fit: contain;">
+                            <div class="pogo-card-details">
+                                <span class="pogo-badge" style="background-color: ${event.typeColor || '#FF3B30'}">${event.type}</span>
+                                <div class="pogo-event-name">${event.name}</div>
+                                <div class="pogo-event-time">${event.timeLabel}</div>
+                            </div>
+                        </div>
+                        <div class="pogo-card-footer">
+                            <span>Ends in:</span>
+                            <span id="countdown-${index}" class="pogo-countdown-text">Calculating...</span>
+                        </div>
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+            });
+
+            if(timerInterval) clearInterval(timerInterval);
+
+            timerInterval = setInterval(() => {
+                data.forEach((event, index) => {
+                    const timerElement = document.getElementById(`countdown-${index}`);
+                    if (!timerElement) return;
+
+                    const now = new Date().getTime();
+                    const target = new Date(event.endTime).getTime();
+                    const distance = target - now;
+
+                    if (distance < 0) {
+                        timerElement.innerText = "Event Ended";
+                        timerElement.style.color = "#FF3B30";
+                    } else {
+                        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+
+                        if (days > 0) {
+                            timerElement.innerText = `${days}d ${hours}h ${minutes}m`;
+                        } else {
+                            timerElement.innerText = `${hours}h ${minutes}m`;
+                        }
+                        timerElement.style.color = "#007AFF"; 
+                    }
+                });
+            }, 1000);
+        })
+        .catch(() => {
+            if(grid) {
+                grid.innerHTML = `<div style="color:#ff3e3e; font-size:12px; text-align:center; padding:10px;">⚠ Live Events Data is syncing...</div>`;
+            }
+        });
+}
+
 function openEventDetails(index) {
     const event = globalEventsData[index];
     if(!event) return;
 
-    const popImg = event.imageUrl ? event.imageUrl : 'https://images.gameinfo.io/item/128/pokeball.png';
-    const imgElement = document.getElementById('popEventImg');
-    imgElement.src = popImg;
-    imgElement.onerror = function() { this.src = 'https://images.gameinfo.io/item/128/pokeball.png'; };
+    document.getElementById('popEventImg').src = getEventImage(event);
     
     const badge = document.getElementById('popEventBadge');
     badge.innerText = event.type;
@@ -608,20 +731,6 @@ function openEventDetails(index) {
 
 function closeEventDetails() {
     document.getElementById('eventDetailsPopup').style.display = 'none';
-}
-
-function backToGamingMenu() {
-    if(document.getElementById('pokemonEventsArea')) {
-        document.getElementById('pokemonEventsArea').style.display = 'none';
-    }
-    const gamingZone = document.getElementById('gamingZoneArea');
-    if(gamingZone) gamingZone.style.display = "block";
-    document.getElementById('nav-title').innerText = "GAMING ZONE";
-}
-
-function closeGamingModal() {
-    if(timerInterval) clearInterval(timerInterval); // మోడల్ మూసేసినప్పుడు బ్యాక్‌గ్రౌండ్ టైమర్ ఆపేస్తాం
-    document.getElementById('gamingZoneModal').style.display = "none";
 }
 
 window.onload = () => {
