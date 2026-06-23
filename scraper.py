@@ -1,107 +1,75 @@
 import requests
-from bs4 import BeautifulSoup
 import json
-from datetime import datetime, timedelta
-
-text_colors = {
-    "max mondays": "#7A1F46",
-    "raid battles": "#C83E23",
-    "raid days": "#C83E23",
-    "raid hours": "#C83E23",
-    "go battle league": "#8A3AB9",
-    "community day": "#E65C00",
-    "spotlight hour": "#008080",
-    "research breakthrough": "#4A69BD"
-}
+from datetime import datetime
 
 def scrape_leakduck():
-    url = "https://leakduck.com/"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
+    # లీక్‌డక్ అఫీషియల్ పబ్లిక్ ఈవెంట్స్ API ఎండ్‌పాయింట్
+    url = "https://leakduck.com/api/v1/events/"
     
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, timeout=15)
         if response.status_code != 200:
-            print(f"Failed to fetch LeakDuck, status: {response.status_code}")
+            print(f"API Fetch Failed: {response.status_code}")
             return
             
-        soup = BeautifulSoup(response.text, 'html.parser')
+        api_data = response.json()
         events = []
         
-        # లీక్‌డక్ లోని మెయిన్ ఈవెంట్ కార్డ్స్ సెలెక్టర్
-        event_cards = soup.select('a.event-card-link')
-        print(f"Found {len(event_cards)} events total.")
+        # లీక్‌డక్ కలర్ కోడింగ్ మ్యాపింగ్
+        type_colors = {
+            "max mondays": "#7A1F46",
+            "raid battles": "#C83E23",
+            "raid days": "#C83E23",
+            "raid hours": "#C83E23",
+            "go battle league": "#8A3AB9",
+            "community day": "#E65C00",
+            "spotlight hour": "#008080",
+            "research breakthrough": "#4A69BD"
+        }
 
-        for card in event_cards:
-            try:
-                name_el = card.select_one('.event-title, h1, h2, h3, h2.event-title')
-                name = name_el.text.strip() if name_el else ""
-                if not name:
-                    continue
-                
-                type_el = card.select_one('.event-type')
-                ev_type = type_el.text.strip() if type_el else "Event"
-                
-                type_lower = ev_type.lower()
-                color = "#3a3a3c"
-                for key, val in text_colors.items():
-                    if key in type_lower:
-                        color = val
-                        break
-                
-                # ఇమేజ్ దొరకకపోతే పోకేబాల్ ఇమేజ్ వచ్చేలా బ్యాకప్ లింక్
-                img_url = "https://images.gameinfo.io/item/128/pokeball.png"
-                img_el = card.select_one('img')
-                if img_el:
-                    possible_src = img_el.get('src') or img_el.get('data-src') or ""
-                    if possible_src and not possible_src.endswith('blank.gif'):
-                        img_url = possible_src
-                
-                if img_url.startswith('/'):
-                    img_url = "https://leakduck.com" + img_url
-                
-                time_el = card.select_one('.event-countdown, .event-time')
-                time_label = time_el.text.strip() if time_el else "Live Now"
-                
-                # కరెక్ట్ సెక్షన్ కనుక్కోవడం
-                parent_section = card.find_parent('div', class_='event-section')
+        for item in api_data:
+            name = item.get('name', 'Unknown Event')
+            ev_type = item.get('type', 'Event')
+            
+            # కలర్ సెట్ చేయడం
+            type_lower = ev_type.lower()
+            color = "#3a3a3c"
+            for key, val in type_colors.items():
+                if key in type_lower:
+                    color = val
+                    break
+            
+            # హై-క్వాలిటీ ఒరిజినల్ ఇమేజ్ URL
+            img_url = item.get('image', 'https://images.gameinfo.io/item/128/pokeball.png')
+            
+            # టైమ్ మరియు సెక్షన్ వివరాలు
+            time_label = item.get('heading', 'Live Now')
+            end_time = item.get('end', '')
+            
+            # సెక్షన్ కేటగిరీ (LIVE, UPCOMING, etc.)
+            section_name = "UPCOMING EVENTS"
+            if item.get('isLive', False):
                 section_name = "LIVE EVENTS"
-                if parent_section:
-                    sec_header = parent_section.select_one('.section-title, h2')
-                    if sec_header:
-                        section_name = sec_header.text.strip().upper()
-                
-                now = datetime.utcnow() + timedelta(hours=5, minutes=30) # IST
-                if "today" in section_name.lower():
-                    end_time = (now.replace(hour=22, minute=0, second=0)).isoformat()
-                elif "tomorrow" in section_name.lower():
-                    end_time = (now + timedelta(days=1)).replace(hour=22, minute=0, second=0).isoformat()
-                else:
-                    end_time = (now + timedelta(days=3)).isoformat()
 
-                events.append({
-                    "name": name,
-                    "type": ev_type,
-                    "typeColor": color,
-                    "imageUrl": img_url,
-                    "endTime": end_time,
-                    "timeLabel": time_label,
-                    "section": section_name
-                })
-            except Exception as card_err:
-                continue
-                
-        # ఒకవేళ లిస్ట్ ఖాళీగా ఉంటే పాత డేటా పోకుండా ఉండటానికి చెక్
-        if len(events) > 0:
+            events.append({
+                "name": name,
+                "type": ev_type,
+                "typeColor": color,
+                "imageUrl": img_url,
+                "endTime": end_time,
+                "timeLabel": time_label,
+                "section": section_name
+            })
+
+        if events:
             with open('events_deep_data.json', 'w', encoding='utf-8') as f:
                 json.dump(events, f, ensure_ascii=False, indent=4)
-            print(f"Successfully saved {len(events)} events!")
+            print(f"Success! Fetched {len(events)} events from LeakDuck API.")
         else:
-            print("No events scraped. Keeping fallback.")
-        
+            print("No events found in API response.")
+
     except Exception as e:
-        print(f"Scraper encountered error: {e}")
+        print(f"Error occurred while fetching API: {e}")
 
 if __name__ == "__main__":
     scrape_leakduck()
