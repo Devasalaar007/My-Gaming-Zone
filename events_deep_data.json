@@ -1,1 +1,38 @@
-[]
+[
+    {
+        "name": "Dynamax Hoothoot during Max Mondays",
+        "type": "Max Mondays",
+        "typeColor": "#7A1F46",
+        "imageUrl": "https://images.gameinfo.io/pokemon/256/p163-f00-normal.png",
+        "endTime": "2026-06-23T22:00:00",
+        "timeLabel": "Mon, Jun 22, at 9:00 PM Local Time",
+        "section": "ENDS TODAY"
+    },
+    {
+        "name": "Necrozma in 5-star Raid Battles",
+        "type": "Raid Battles",
+        "typeColor": "#C83E23",
+        "imageUrl": "https://images.gameinfo.io/pokemon/256/p800-f00-normal.png",
+        "endTime": "2026-06-24T22:00:00",
+        "timeLabel": "Tue, Jun 23, at 10:00 PM Local Time",
+        "section": "ENDS TOMORROW"
+    },
+    {
+        "name": "Master League: Mega Edition and Premier",
+        "type": "GO Battle League",
+        "typeColor": "#8A3AB9",
+        "imageUrl": "https://images.gameinfo.io/item/128/pokeball.png",
+        "endTime": "2026-06-25T01:30:00",
+        "timeLabel": "Wed, Jun 24, at 1:30 AM UTC+05:30",
+        "section": "ENDS THIS WEEK"
+    },
+    {
+        "name": "Mega Scizor in Mega Raids",
+        "type": "Raid Battles",
+        "typeColor": "#C83E23",
+        "imageUrl": "https://images.gameinfo.io/pokemon/256/p212-f01-mega.png",
+        "endTime": "2026-06-25T06:00:00",
+        "timeLabel": "Wed, Jun 24, at 6:00 AM Local Time",
+        "section": "ENDS THIS WEEK"
+    }
+]
